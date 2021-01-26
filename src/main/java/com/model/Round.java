@@ -51,9 +51,10 @@ public class Round {
         return game;
     }
 
+    // Override default equals for testing purposes
     @Override
     public boolean equals(Object obj) {
-        if(this == obj) return true;
+        if (this == obj) return true;
             if (!(obj instanceof Round)) {
                 return false;
             }
@@ -65,6 +66,7 @@ public class Round {
                     && round.game.equals(this.game));
     }
 
+    // Override default hashCode for testing purposes
     @Override
     public int hashCode() {
         return this.roundId;

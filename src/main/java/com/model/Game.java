@@ -30,9 +30,11 @@ public class Game {
         this.status = status;
     }
 
+
+    // Override default equals for testing
     @Override
     public boolean equals(Object obj) {
-        if(this==obj) return true;
+        if (this == obj) return true;
         if (!(obj instanceof Game)) {
             return false;
         }
@@ -43,6 +45,7 @@ public class Game {
                     game.status == this.status);
     }
 
+    // Override default hashCode for testing
     @Override
     public int hashCode() {
         return this.gameId;

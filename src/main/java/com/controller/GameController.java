@@ -14,6 +14,11 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.*;
 
+// @RestController is needed to make class injectable.
+// Lets Spring MVC scan for methods that can handle HTTP requests.
+// Tells Spring MVC to convert method results to JSON.
+// @RequestMapping builds url.
+// Methods in class will default to the given url.
 @RestController
 @RequestMapping("/assessment")
 public class GameController {
@@ -21,12 +26,17 @@ public class GameController {
     private final GameDaoDb gameDb;
     private final RoundDaoDb roundDb;
 
+//    Autowired is optional here. The constructor will take in the
+//    dependencies, and Spring satisfies the dependency with the class
+//    annotated with @Repository.
     @Autowired
     public GameController(GameDaoDb gameDaoDb, RoundDaoDb roundDaoDb) {
         this.gameDb = gameDaoDb;
         this.roundDb = roundDaoDb;
     }
 
+//    @PostMapping enables our method to accept POST requests at url /assessment/begin.
+//    Returns 201 CREATED if successful. Otherwise, 404. Ask Ronnie.
     @PostMapping("/begin")
     public ResponseEntity<Integer> begin() {
         Game game = new Game();
@@ -38,9 +48,16 @@ public class GameController {
         }
         return new ResponseEntity(game.getGameId(), HttpStatus.CREATED);
     }
-
+//    @PostMapping enables our method to accept POST requests at url /assessment/guess.
+//    Returns 201 CREATED if successful.
+//    @RequestBody annotation allows Spring to inject request body as argument.
     @PostMapping("/guess")
     public ResponseEntity<Round> guess(@RequestBody String jsonStr) throws JSONException {
+
+//      @RequestBody can only be used once so we must use a jsonObject
+//      to get all of the arguments from the request body. We can unpack
+//      the jsonObject using its .get method and casting.
+
         JSONObject jsonObject = new JSONObject(jsonStr);
         String gameId = (String) jsonObject.get("gameId");
         String guess = (String) jsonObject.get("guess");
@@ -48,10 +65,17 @@ public class GameController {
         if (game == null) {
             return new ResponseEntity(null, HttpStatus.NOT_FOUND);
         }
+
+//      Can't have a valid number starting with 0.
+        if (guess.charAt(0) == '0') {
+            return new ResponseEntity(null, HttpStatus.METHOD_NOT_ALLOWED);
+        }
+
         if (!checkValidGuess(Integer.parseInt(guess))) {
             return new ResponseEntity(null, HttpStatus.METHOD_NOT_ALLOWED);
         }
 
+//      Create round corresponding to guess.
         int answer = game.getAnswer();
         Round round = new Round();
         round.setGuess(guess);
@@ -63,26 +87,36 @@ public class GameController {
             return new ResponseEntity(null, HttpStatus.NOT_FOUND);
         }
 
+//      If guess is correct, update dao accordingly.
         if (isCorrect(answer, Integer.parseInt(guess))) {
             game.setStatus(false);
             gameDb.updateGame(game);
         }
          else {
+//          Create game with answer set to 0.
+
             Game temp = new Game();
             temp.setGameId(game.getGameId());
+            temp.setStatus(true);
             round.setGame(temp);
         }
         return new ResponseEntity(round, HttpStatus.CREATED);
     }
 
+//    @GetMapping enables our method to accept GET requests at url /assessment/game.
+//    Returns 200 OK if successful.
     @GetMapping("/game")
     public ResponseEntity<List<Game>> getGames() {
         List<Game> games = gameDb.getAllGames();
         if (games == null) {
             return new ResponseEntity(null, HttpStatus.NOT_FOUND);
         }
+
+//      Creating return list populated with games.
+//      Change game answers to reflect status.
+
         List<Game> retGames = new ArrayList<>();
-        for(Game game : games) {
+        for (Game game : games) {
             if (!game.getStatus()) {
                 retGames.add(game);
             } else {
@@ -96,6 +130,9 @@ public class GameController {
         return ResponseEntity.ok(retGames);
     }
 
+//  @GetMapping enables our method to accept GET requests at url /assessment/game/{gameId}
+//  Return 200 OK if successful.
+//  @PathVariable annotation instructs Spring to inject argument from the url path.
     @GetMapping("/game/{gameId}")
     public ResponseEntity<Game> getGameById(@PathVariable String gameId) {
         int id = Integer.parseInt(gameId);
@@ -103,12 +140,17 @@ public class GameController {
         if (game == null) {
             return new ResponseEntity(null, HttpStatus.NOT_FOUND);
         }
+
+//      Change status if necessary.
+//      Not a permanent operation since game is not being updated or set by dao.
         if (game.getStatus()) {
             game.setAnswer(0);
         }
         return ResponseEntity.ok(game);
     }
-
+//  @GetMapping enables our method to accept GET requests at url /assessment/rounds/{gameId}
+//  Return 200 OK if successful.
+//  @PathVariable annotation instructs Spring to inject argument from the url path.
     @GetMapping("/rounds/{gameId}")
     public ResponseEntity<List<Round>> getRounds(@PathVariable String gameId) {
         int id = Integer.parseInt(gameId);
@@ -121,9 +163,9 @@ public class GameController {
             return new ResponseEntity(null, HttpStatus.NOT_FOUND);
         }
 
-        if (!game.getStatus()) {
-            Collections.sort(rounds, new CustomComparator());
-        } else {
+//      Change rounds if necessary to reflect status.
+
+        if (game.getStatus()) {
             Game temp = new Game();
             temp.setAnswer(0);
             temp.setGameId(game.getGameId());
@@ -131,12 +173,19 @@ public class GameController {
             for (Round round : rounds) {
                 round.setGame(temp);
             }
-            Collections.sort(rounds, new CustomComparator());
         }
+
+//      Sort rounds based on LocalDateTime using custom comparator.
+
+        Collections.sort(rounds, new CustomComparator());
         return ResponseEntity.ok(rounds);
     }
 
+//  Helper method to check if user guess is valid.
+//  Int is built in reverse but it won't affect anything
+//  because we are only checking length and uniqueness.
     private boolean checkValidGuess(int guess) {
+        int temp = guess;
         HashSet<Integer> set = new HashSet<>();
         while (guess > 0) {
             if (set.contains(guess % 10)) {
@@ -145,13 +194,14 @@ public class GameController {
             set.add(guess % 10);
             guess = guess / 10;
         }
-        return true;
+        return String.valueOf(temp).length() == 4;
     }
 
     private boolean isCorrect(int answer, int guess) {
         return answer == guess;
     }
 
+//  Returns String formatted with exact and partials.
     private String getGuessResult(int answer, int guess) {
         int exact = 0;
         int partial = 0;
@@ -175,10 +225,16 @@ public class GameController {
 
     private int generateNumber() {
         ArrayList<Integer> nums = new ArrayList<>();
-        for(int i = 0; i<10 ; i++) {
+        for (int i = 0; i < 10 ; i++) {
             nums.add(i);
         }
+
+//      Avoiding massive headache
+
         Collections.shuffle(nums);
+        if (nums.get(0) == 0) {
+            Collections.shuffle(nums);
+        }
         int i = 0;
         for (int index = 0; index < 4; index++) {
             i = i + nums.get(index);
@@ -189,7 +245,8 @@ public class GameController {
         return i;
     }
 
-    private class CustomComparator implements Comparator<Round> {
+//  Custom comparator used to sort list based on time.
+    private static class CustomComparator implements Comparator<Round> {
         @Override
         public int compare(Round o1, Round o2) {
             return o1.getTime().compareTo(o2.getTime());
