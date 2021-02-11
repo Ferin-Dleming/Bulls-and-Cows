@@ -13,7 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.sql.*;
 import java.util.List;
 
-// @Repository tag indicates this class works with db
+
 @Repository
 @Profile("database")
 public class GameDaoDb implements GameDao {

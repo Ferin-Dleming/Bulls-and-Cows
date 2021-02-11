@@ -97,6 +97,7 @@ public class GameDaoDbTest{
         game.setStatus(true);
         game.setAnswer(1234);
         game = gameDao.addGame(game);
+
         Round round = new Round();
         round.setRoundId(1);
         round.setGuess("1234");
@@ -104,6 +105,7 @@ public class GameDaoDbTest{
         round.setGuessResult("e0:p:0");
         round.setGame(game);
         round = roundDao.addRound(round);
+
         gameDao.deleteGameById(game.getGameId());
         Game fromDao = gameDao.getGameById(game.getGameId());
         assertNull(fromDao);
